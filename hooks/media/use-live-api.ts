@@ -350,6 +350,8 @@ export function useLiveApi({
         if (fc.name === 'connect_whatsapp') {
             try {
                 responsePayload = await api.connectWhatsapp();
+                const uiState = await import('../../lib/state');
+                uiState.useUI.getState().setActiveOverlay('whatsapp');
             } catch (e: any) {
                 responsePayload = { error: e.message };
             }

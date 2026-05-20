@@ -184,59 +184,66 @@ async function startServer() {
     }
   });
 
-  // WhatsApp Proxy
+  // WhatsApp Proxy (Meta for Developers Cloud API)
   app.get('/api/whatsapp/connect', async (req, res) => {
-    const gowaUrl = process.env.GOWA_API_URL;
-    if (!gowaUrl) return res.status(503).json({ error: 'GoWA API not configured' });
+    const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     
-    try {
-      const headers: any = {
-        'Authorization': `Basic ${Buffer.from(`${process.env.GOWA_USERNAME}:${process.env.GOWA_PASSWORD}`).toString('base64')}`,
-        'X-Device-Id': '92d5d59e-de02-4375-89ee-89bf58299b96'
-      };
-      if (process.env.GOWA_TRAEFIK_HOST) {
-        headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
-      }
-
-      const response = await fetch(`${gowaUrl}/instance/connect`, { headers });
-      res.json(await response.json());
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
+    res.json({
+      status: "ready",
+      provider: "Meta for Developers Cloud API",
+      phoneNumberId: phoneNumberId || null,
+      configured: !!whatsappToken && !!phoneNumberId,
+      instructions: "To finalize production activation: 1. Create your Business application on developers.facebook.com. 2. Enable physical WhatsApp Product. 3. Retrieve your permanent access token and Phone Number ID, setting them securely in your .env or Environment Variables. 4. Complete the official phone linking."
+    });
   });
 
   app.post('/api/whatsapp/send', authenticateToken, async (req: any, res) => {
-    const gowaUrl = process.env.GOWA_API_URL;
-    if (!gowaUrl) return res.status(503).json({ error: 'GoWA API not configured' });
+    const whatsappToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     
-    try {
-      const headers: any = {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${process.env.GOWA_USERNAME}:${process.env.GOWA_PASSWORD}`).toString('base64')}`,
-        'X-Device-Id': '92d5d59e-de02-4375-89ee-89bf58299b96'
-      };
-      if (process.env.GOWA_TRAEFIK_HOST) {
-        headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
-      }
+    const phone = req.body.phone;
+    const text = req.body.text;
 
-      const response = await fetch(`${gowaUrl}/message/sendText`, {
+    if (!whatsappToken || !phoneNumberId) {
+      return res.status(400).json({
+        error: 'WhatsApp integration is not fully configured on the server.',
+        message: 'Please define the WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID environment variables in your server configuration to enable production-level WhatsApp messaging.'
+      });
+    }
+
+    try {
+      // Standard Graph API fetch for Meta Cloud WhatsApp API
+      const response = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
         method: 'POST',
-        headers,
+        headers: {
+          'Authorization': `Bearer ${whatsappToken}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          number: req.body.phone,
-          text: req.body.text
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: phone,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: text
+          }
         })
       });
+
       const result = await response.json();
 
       // Log to Firestore
       try {
         const firestore = getFirebaseAdmin().firestore();
         await firestore.collection('users').doc(req.user.uid).collection('whatsapp_messages').add({
-          phone: req.body.phone,
-          text: req.body.text,
+          phone,
+          text,
           direction: 'sent',
-          status: result.status || 'success',
+          status: result.error ? 'failed' : 'sent',
+          messageId: result.messages?.[0]?.id || null,
+          error: result.error || null,
           timestamp: new Date().toISOString()
         });
       } catch (logErr) {

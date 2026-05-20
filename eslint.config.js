@@ -4,7 +4,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 
 export default [
   {
-    ignores: ['dist/**/*']
+    ignores: ['dist/**/*', 'firestore.rules']
   },
   {
     files: ['firestore.rules'],
