@@ -50,10 +50,14 @@ function LocationMap({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (active && !loc && !error) {
-       navigator.geolocation.getCurrentPosition(
-         pos => setLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-         err => setError('Unable to retrieve location.')
-       );
+       if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator && 'geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            pos => setLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            err => setError('Unable to retrieve location.')
+          );
+       } else {
+          setError('Geolocation is not supported by your browser or connection.');
+       }
     }
   }, [active, loc, error]);
 

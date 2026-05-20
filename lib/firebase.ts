@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer, getDoc, setDoc } from 'firebase/firestore';
 import firebaseConfigFromFile from '../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -22,7 +22,7 @@ const provider = new GoogleAuthProvider();
 // Required Scopes for Google Workspace APIs
 provider.addScope('https://www.googleapis.com/auth/tasks');
 provider.addScope('https://www.googleapis.com/auth/calendar');
-provider.addScope('https://www.googleapis.com/auth/drive');
+provider.addScope('https://www.googleapis.com/auth/drive.file');
 provider.addScope('https://www.googleapis.com/auth/documents');
 provider.addScope('https://www.googleapis.com/auth/spreadsheets');
 provider.addScope('https://www.googleapis.com/auth/presentations');
@@ -30,7 +30,7 @@ provider.addScope('https://www.googleapis.com/auth/forms.body');
 provider.addScope('https://www.googleapis.com/auth/forms.responses.readonly');
 provider.addScope('https://www.googleapis.com/auth/contacts');
 provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-provider.addScope('https://mail.google.com/');
+provider.addScope('https://www.googleapis.com/auth/gmail.send');
 provider.addScope('https://www.googleapis.com/auth/chat.messages');
 provider.addScope('https://www.googleapis.com/auth/chat.spaces');
 provider.addScope('https://www.googleapis.com/auth/meetings.space.created');
@@ -44,7 +44,8 @@ export const initAuth = (
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
-      if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken || '');
+      const token = await getAccessToken();
+      if (onAuthSuccess) onAuthSuccess(user, token || '');
     } else {
       cachedAccessToken = null;
       if (onAuthFailure) onAuthFailure();
@@ -62,6 +63,20 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     }
 
     cachedAccessToken = credential.accessToken;
+
+    // Securely persist Google OAuth user info & credentials in the user's Firestore document
+    try {
+      await setDoc(doc(db, 'users', result.user.uid), {
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL,
+        accessToken: cachedAccessToken,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (fsErr) {
+      console.error('Failed to save authenticated user / token to Firestore of sign in:', fsErr);
+    }
+
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('Sign in error:', error);
@@ -72,7 +87,26 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken;
+  if (cachedAccessToken) {
+    return cachedAccessToken;
+  }
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userDocRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        if (data && data.accessToken) {
+          cachedAccessToken = data.accessToken;
+          return data.accessToken;
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching token from Firestore:', e);
+    }
+  }
+  return null;
 };
 
 export const logout = async () => {

@@ -629,8 +629,13 @@ export function useLiveApi({
         if (fc.name === 'calculate') {
            const { expression } = fc.args as any;
            try {
-              // Basic safe evaluation for math
-              const result = new Function(`return ${expression}`)();
+              // Strict sanitization: Allow ONLY safe math characters
+              const safeExpression = String(expression).trim();
+              const isSafe = /^[0-9+\-*/().\s]+$/.test(safeExpression);
+              if (!isSafe) {
+                 throw new Error('Unsafe mathematical expression.');
+              }
+              const result = new Function(`return ${safeExpression}`)();
               responsePayload = { result };
            } catch (e: any) {
               responsePayload = { error: 'Calculation failed: ' + e.message };

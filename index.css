@@ -28,7 +28,22 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       -webkit-tap-highlight-color: transparent; 
       -webkit-touch-callout: none;
-      -webkit-user-select: none; user-select: none;
+    }
+
+    button, .skill-chip, .nav-item, .header, #skills-rail {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .conversation-message, 
+    .markdown-content, 
+    pre, 
+    code, 
+    .overlay-content,
+    .artifact-content,
+    #text-streaming-area {
+      -webkit-user-select: text !important;
+      user-select: text !important;
     }
 
     input, textarea, select { -webkit-user-select: auto; user-select: auto; }
@@ -78,6 +93,7 @@
     .connect-btn {
       display: flex; align-items: center; gap: 6px;
       color: var(--accent-primary-text);
+      background-color: var(--accent-primary); /* Safe default background color fallback */
       border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px;
     }
 
