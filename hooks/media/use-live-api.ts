@@ -50,6 +50,8 @@ export function useLiveApi({
   const client = useMemo(() => new GenAILiveClient(apiKey, model), [apiKey, model]);
 
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
+  const voluntaryDisconnectRef = useRef<boolean>(false);
+  const errorShownThisSessionRef = useRef<boolean>(false);
 
   const [volume, setVolume] = useState(0);
   const [connected, setConnected] = useState(false);
@@ -79,34 +81,92 @@ export function useLiveApi({
       setConnected(true);
     };
 
+    const getErrorMessage = (err: any): string => {
+      if (!err) return '';
+      if (typeof err === 'string') return err;
+      if (err instanceof Error) return err.message;
+      if (err.message) return err.message;
+      if (err.error) {
+        if (typeof err.error === 'string') return err.error;
+        if (err.error.message) return err.error.message;
+      }
+      if (err.reason) return err.reason;
+      try {
+        const str = JSON.stringify(err);
+        if (str && str !== '{}') return str;
+      } catch (_) {}
+      return String(err);
+    };
+
+    const isQuotaError = (msg: string): boolean => {
+      const lower = msg.toLowerCase();
+      return lower.includes('quota') || 
+             lower.includes('limit') || 
+             lower.includes('resource_exhausted') || 
+             lower.includes('exceeded') || 
+             lower.includes('billing');
+    };
+
     const onClose = (e?: any) => {
       setConnected(false);
       console.log("Live API connection closed:", e);
+      if (voluntaryDisconnectRef.current) {
+        return;
+      }
+      if (errorShownThisSessionRef.current) {
+        return;
+      }
+
       const reason = e?.reason || '';
-      if (reason) {
-        if (reason.toLowerCase().includes('quota') || reason.toLowerCase().includes('limit') || reason.toLowerCase().includes('resource_exhausted') || reason.toLowerCase().includes('exceeded') || reason.toLowerCase().includes('billing')) {
-          useLogStore.getState().addTurn({
-            role: 'system',
-            text: "⚠️ **Gemini Live API Quota Exceeded:** You have exceeded your current Google AI Studio free tier quota. Please switch your API key to a Pay-As-You-Go plan in Google AI Studio Settings if you require higher limits, or try again tomorrow.",
-            isFinal: true
-          });
-        }
+      const errMsg = getErrorMessage(e);
+
+      if (isQuotaError(reason) || isQuotaError(errMsg)) {
+        errorShownThisSessionRef.current = true;
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: "⚠️ **Gemini Live API Quota Exceeded:** You have exceeded your current Google AI Studio free tier quota. Please switch your API key to a Pay-As-You-Go plan in Google AI Studio Settings if you require higher limits, or try again tomorrow.",
+          isFinal: true
+        });
+      } else {
+        errorShownThisSessionRef.current = true;
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: `⚠️ **Live API Connection Closed:** The connection was closed.${reason ? ` Reason: ${reason}` : ''}`,
+          isFinal: true
+        });
       }
     };
 
     const onError = (e?: any) => {
       console.error("Live API connection error:", e);
-      const errMsg = e?.message || e?.error?.message || '';
-      if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit') || errMsg.toLowerCase().includes('resource_exhausted') || errMsg.toLowerCase().includes('exceeded') || errMsg.toLowerCase().includes('billing')) {
+      if (voluntaryDisconnectRef.current) {
+        return;
+      }
+      if (errorShownThisSessionRef.current) {
+        return;
+      }
+
+      const errMsg = getErrorMessage(e);
+
+      if (isQuotaError(errMsg)) {
+        errorShownThisSessionRef.current = true;
         useLogStore.getState().addTurn({
           role: 'system',
           text: "⚠️ **Gemini Live API Quota Exceeded:** You have exceeded your current Google AI Studio free tier quota. Please switch your API key to a Pay-As-You-Go plan in Google AI Studio Settings if you require higher limits, or try again tomorrow.",
           isFinal: true
         });
       } else if (errMsg) {
+        errorShownThisSessionRef.current = true;
         useLogStore.getState().addTurn({
           role: 'system',
           text: `⚠️ **Live API Error:** ${errMsg}`,
+          isFinal: true
+        });
+      } else {
+        errorShownThisSessionRef.current = true;
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: `⚠️ **Live API Error:** Connection failed or was terminated unexpectedly. Please verify your Google GenAI credentials and tier permissions.`,
           isFinal: true
         });
       }
@@ -761,6 +821,8 @@ export function useLiveApi({
     if (!config) {
       throw new Error('config has not been set');
     }
+    voluntaryDisconnectRef.current = false;
+    errorShownThisSessionRef.current = false;
     client.disconnect();
     await client.connect(config);
     if (audioStreamerRef.current) {
@@ -769,6 +831,7 @@ export function useLiveApi({
   }, [client, config]);
 
   const disconnect = useCallback(async () => {
+    voluntaryDisconnectRef.current = true;
     client.disconnect();
     setConnected(false);
   }, [setConnected, client]);
