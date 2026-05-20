@@ -79,8 +79,37 @@ export function useLiveApi({
       setConnected(true);
     };
 
-    const onClose = () => {
+    const onClose = (e?: any) => {
       setConnected(false);
+      console.log("Live API connection closed:", e);
+      const reason = e?.reason || '';
+      if (reason) {
+        if (reason.toLowerCase().includes('quota') || reason.toLowerCase().includes('limit') || reason.toLowerCase().includes('resource_exhausted') || reason.toLowerCase().includes('exceeded') || reason.toLowerCase().includes('billing')) {
+          useLogStore.getState().addTurn({
+            role: 'system',
+            text: "⚠️ **Gemini Live API Quota Exceeded:** You have exceeded your current Google AI Studio free tier quota. Please switch your API key to a Pay-As-You-Go plan in Google AI Studio Settings if you require higher limits, or try again tomorrow.",
+            isFinal: true
+          });
+        }
+      }
+    };
+
+    const onError = (e?: any) => {
+      console.error("Live API connection error:", e);
+      const errMsg = e?.message || e?.error?.message || '';
+      if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit') || errMsg.toLowerCase().includes('resource_exhausted') || errMsg.toLowerCase().includes('exceeded') || errMsg.toLowerCase().includes('billing')) {
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: "⚠️ **Gemini Live API Quota Exceeded:** You have exceeded your current Google AI Studio free tier quota. Please switch your API key to a Pay-As-You-Go plan in Google AI Studio Settings if you require higher limits, or try again tomorrow.",
+          isFinal: true
+        });
+      } else if (errMsg) {
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: `⚠️ **Live API Error:** ${errMsg}`,
+          isFinal: true
+        });
+      }
     };
 
     const stopAudioStreamer = () => {
@@ -98,6 +127,7 @@ export function useLiveApi({
     // Bind event listeners
     client.on('open', onOpen);
     client.on('close', onClose);
+    client.on('error', onError);
     client.on('interrupted', stopAudioStreamer);
     client.on('audio', onAudio);
 
@@ -716,6 +746,7 @@ export function useLiveApi({
       // Clean up event listeners
       client.off('open', onOpen);
       client.off('close', onClose);
+      client.off('error', onError);
       client.off('interrupted', stopAudioStreamer);
       client.off('audio', onAudio);
       client.off('toolcall', onToolCall);
