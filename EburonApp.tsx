@@ -11,6 +11,7 @@ import { auth, db, handleFirestoreError, OperationType, initAuth, googleSignIn, 
 import firebaseConfig from './firebase-applet-config.json';
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { 
   User, ListChecks, Calendar, FolderOpen, Search, Signature, 
   Building2, Video, MessageSquare, Settings, Wrench, History, 
@@ -274,7 +275,11 @@ CORE SPEECH PRINCIPLES
 - Casual Office Vibe: Speak naturally, avoid robotic patterns.
 - Speak entirely in ${language}.
 - Use imperfection carefully: small hesitations like "hmm", "let me see", or "actually".
+
+MEMORY SYSTEM:
 - Proactively update memory using 'save_memory' when key decisions or preferences surface.
+- PROACTIVELY call 'search_memories' whenever the user asks a question about their past, preferences, or previous conversations. If you are unsure, search your memory first before answering.
+${memoryStr ? `Current Core Memories:\n${memoryStr}\n` : ''}
 
 FUNCTION CALLING CAPABILITIES
 You have access to several tools. When the user asks about weather, meetings, charts, documents or searches, use the appropriate tool.
@@ -599,6 +604,14 @@ Output only natural spoken text. No stage directions, no brackets, no role label
         </div>
       </div>
 
+      <AnimatePresence>
+        {(isGenerating || activeWorkspaceResult) && (
+          <div className="w-full max-w-4xl mx-auto flex-shrink-0 z-10 px-2 lg:px-0">
+            <ArtifactOverlay />
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Chat Stream */}
       <main id="text-streaming-area" ref={chatAreaRef}>
         <div id="conversation-container">
@@ -633,7 +646,10 @@ Output only natural spoken text. No stage directions, no brackets, no role label
           </div>
         </div>
         <nav className="nav-controls">
-          <button className="nav-item" onClick={() => setMicState(!micState)} style={{ color: micState ? 'var(--accent-active)' : 'var(--text-muted)' }}>
+          <button className="nav-item" onClick={() => {
+            if (navigator.vibrate) navigator.vibrate(50);
+            setMicState(!micState);
+          }} style={{ color: micState ? 'var(--accent-active)' : 'var(--text-muted)' }}>
              <div className="icon-wrapper" style={{ position: 'relative', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                {micState && clientVolume > 0.01 ? (
                  <div style={{ display: 'flex', gap: '2px', alignItems: 'center', height: '24px', justifyContent: 'center' }}>
@@ -702,9 +718,6 @@ Output only natural spoken text. No stage directions, no brackets, no role label
         </motion.div>
       )}
       </AnimatePresence>
-
-      {/* Workspace & Artifact Overlay */}
-      <ArtifactOverlay />
 
       {/* Profile Overlay */}
       <div id="overlay-profile" className={`full-page-overlay ${activeOverlay === 'profile' ? 'active' : ''}`}>

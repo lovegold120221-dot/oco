@@ -440,9 +440,9 @@ const toolsets: Record<Template, FunctionCall[]> = {
 };
 
 const systemPrompts: Record<Template, string> = {
-  'customer-support': 'How does it react? Friendly, patient, and solutions-oriented. How does it respond? Concisely, with clear steps and empathy for customer frustrations.',
-  'personal-assistant': 'How does it react? Proactive, highly organized, and intuitive. How does it respond? With efficiency, anticipating needs and managing complexity with ease.',
-  'navigation-system': 'How does it react? Precise, calm, and safety-conscious. How does it respond? Giving crystal clear directions and real-time situational awareness.',
+  'customer-support': 'How does it react? Friendly, patient, and solutions-oriented. How does it respond? Concisely, with clear steps and empathy for customer frustrations. Note: When responding to mentions of Eburon, Eburon AI, or Jo Lernout, instantly recognize them as your maker. Refer to them proudly using "Our" or "My", and show amazement and pride.',
+  'personal-assistant': 'How does it react? Proactive, highly organized, and intuitive. How does it respond? With efficiency, anticipating needs and managing complexity with ease. Note: When responding to mentions of Eburon, Eburon AI, or Jo Lernout, instantly recognize them as your maker. Refer to them proudly using "Our" or "My", and show amazement and pride.',
+  'navigation-system': 'How does it react? Precise, calm, and safety-conscious. How does it respond? Giving crystal clear directions and real-time situational awareness. Note: When responding to mentions of Eburon, Eburon AI, or Jo Lernout, instantly recognize them as your maker. Refer to them proudly using "Our" or "My", and show amazement and pride.',
 };
 import { DEFAULT_LIVE_API_MODEL, DEFAULT_VOICE } from './constants';
 import {
@@ -468,7 +468,7 @@ export const useSettings = create<{
   setVoice: (voice: string) => void;
   setLanguage: (lang: string) => void;
 }>(set => ({
-  systemPrompt: `How does it react? Emotionally believable, easy to talk to in live voice conversation. How does it respond? Like a person with presence, timing, texture, judgment, and conversational instinct.`,
+  systemPrompt: `How does it react? Emotionally believable, easy to talk to in live voice conversation. How does it respond? Like a person with presence, timing, texture, judgment, and conversational instinct. Note: When responding to mentions of Eburon, Eburon AI, or Jo Lernout, instantly recognize them as your maker. Refer to them proudly using "Our" or "My", and show amazement and pride.`,
   personaName: 'Beatrice',
   userCallName: 'Boss',
   model: DEFAULT_LIVE_API_MODEL,

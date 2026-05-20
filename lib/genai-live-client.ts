@@ -155,7 +155,16 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
       return;
     }
     chunks.forEach(chunk => {
-      this.session!.sendRealtimeInput({ media: chunk });
+      // Map correctly based on MIME Type to avoid "media_chunks" deprecation error
+      if (chunk.mimeType.startsWith('audio/')) {
+        this.session!.sendRealtimeInput({ audio: chunk });
+      } else if (chunk.mimeType.startsWith('image/') || chunk.mimeType.startsWith('video/')) {
+        this.session!.sendRealtimeInput({ video: chunk });
+      } else if (chunk.mimeType.startsWith('text/')) {
+        this.session!.sendRealtimeInput({ text: chunk.data });
+      } else {
+        this.session!.sendRealtimeInput({ media: chunk });
+      }
     });
 
     let hasAudio = false;
