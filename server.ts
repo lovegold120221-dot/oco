@@ -3,6 +3,8 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
 dotenv.config();
 
@@ -30,6 +32,30 @@ function getFirebaseAdmin() {
     }
   }
   return admin;
+}
+
+let firestoreDb: any = null;
+function getFirestoreDb() {
+  if (!firestoreDb) {
+    const adminApp = getFirebaseAdmin();
+    let databaseId: string | undefined;
+    try {
+      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        databaseId = config.firestoreDatabaseId;
+      }
+    } catch (err) {
+      console.warn('Failed to parse firebase-applet-config.json:', err);
+    }
+
+    if (databaseId) {
+      firestoreDb = getAdminFirestore(adminApp, databaseId);
+    } else {
+      firestoreDb = getAdminFirestore(adminApp);
+    }
+  }
+  return firestoreDb;
 }
 
 async function startServer() {
@@ -68,13 +94,13 @@ async function startServer() {
   // Settings (Migrated to Firestore)
   app.get('/api/settings', authenticateToken, async (req: any, res) => {
     try {
-      const firestore = getFirebaseAdmin().firestore();
+      const firestore = getFirestoreDb();
       const doc = await firestore.collection('users').doc(req.user.uid).get();
       if (!doc.exists) {
         return res.json({
           persona_name: 'Beatrice',
           user_call_name: 'Boss',
-          voice: 'Puck',
+          voice: 'Aoede',
           language: 'English',
           system_prompt: 'Classic Beatrice behavior.'
         });
@@ -87,7 +113,7 @@ async function startServer() {
 
   app.put('/api/settings', authenticateToken, async (req: any, res) => {
     try {
-      const firestore = getFirebaseAdmin().firestore();
+      const firestore = getFirestoreDb();
       await firestore.collection('users').doc(req.user.uid).set({
         ...req.body,
         updatedAt: new Date().toISOString()
@@ -101,7 +127,7 @@ async function startServer() {
   // Memories (Migrated to Firestore)
   app.get('/api/memories', authenticateToken, async (req: any, res) => {
     try {
-      const firestore = getFirebaseAdmin().firestore();
+      const firestore = getFirestoreDb();
       const userDoc = await firestore.collection('users').doc(req.user.uid).get();
       const memories = userDoc.exists ? (userDoc.data()?.memories || []) : [];
       res.json(memories);
@@ -112,7 +138,7 @@ async function startServer() {
 
   app.post('/api/memories', authenticateToken, async (req: any, res) => {
     try {
-      const firestore = getFirebaseAdmin().firestore();
+      const firestore = getFirestoreDb();
       const memory = {
         id: Math.random().toString(36).substring(7),
         ...req.body,
@@ -126,7 +152,7 @@ async function startServer() {
     } catch (e: any) {
       // If user doc doesn't exist, create it
       if (e.code === 5 || e.message.includes('NOT_FOUND')) {
-        const firestore = getFirebaseAdmin().firestore();
+        const firestore = getFirestoreDb();
         const memory = {
           id: Math.random().toString(36).substring(7),
           ...req.body,
@@ -144,7 +170,7 @@ async function startServer() {
 
   app.delete('/api/memories/:id', authenticateToken, async (req: any, res) => {
     try {
-      const firestore = getFirebaseAdmin().firestore();
+      const firestore = getFirestoreDb();
       const userDoc = await firestore.collection('users').doc(req.user.uid).get();
       if (!userDoc.exists) return res.sendStatus(404);
       
@@ -230,7 +256,7 @@ async function startServer() {
 
       // Log to Firestore
       try {
-        const firestore = getFirebaseAdmin().firestore();
+        const firestore = getFirestoreDb();
         await firestore.collection('users').doc(req.user.uid).collection('whatsapp_messages').add({
           phone,
           text,

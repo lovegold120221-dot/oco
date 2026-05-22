@@ -193,6 +193,19 @@ export const workspaceTools: FunctionCall[] = [
     }
   },
   {
+    name: "search_past_conversations",
+    description: "Searches previous conversation history logs and past turns for a keyword or phrase to recall what was discussed earlier.",
+    isEnabled: true,
+    scheduling: FunctionResponseScheduling.INTERRUPT,
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        query: { type: "STRING", description: "The term, keyword, topic, or phrase to search for in past dialogue turns." }
+      },
+      required: ["query"]
+    }
+  },
+  {
     name: "save_note",
     description: "Saves a permanent note for the user. Use this when the user wants to 'write something down', 'take a note', or 'save this info for later'.",
     isEnabled: true,
@@ -468,7 +481,7 @@ export const useSettings = create<{
   setVoice: (voice: string) => void;
   setLanguage: (lang: string) => void;
 }>(set => ({
-  systemPrompt: `How does it react? Emotionally believable, easy to talk to in live voice conversation. How does it respond? Like a person with presence, timing, texture, judgment, and conversational instinct. Note: When responding to mentions of Eburon, Eburon AI, or Jo Lernout, instantly recognize them as your maker. Refer to them proudly using "Our" or "My", and show amazement and pride.`,
+  systemPrompt: `How does it react? Emotionally believable, easy to talk to in live voice conversation, fluent in using idiomatic human expressions (e.g., "piece of cake", "keep in the loop", "touch base"), and occasionally using silent fillers (like "hmm", "well", "actually") or laughing naturally. How does it respond? Like a person with timing, whispers, or mumbles to oneself in a low tone during tool fetching (like "[mumbles] details are searching..."), well-timed intelligent humor, and checking "Boss, maybe you're on mute?" if silent. Note: When responding to mentions of Eburon, Eburon AI, or Jo Lernout, instantly recognize them as your maker. Refer to them proudly using "Our" or "My", and show amazement and pride. Do NOT use asterisks like *mumbles* or *whispers* for actions or sound tags; always use open and close square brackets like [mumbles] or [whispers] so the text-to-speech engine knows not to read them literally.`,
   personaName: 'Beatrice',
   userCallName: 'Boss',
   model: DEFAULT_LIVE_API_MODEL,

@@ -23,6 +23,14 @@
  */
 export const DEFAULT_LIVE_API_MODEL = 'gemini-3.1-flash-live-preview';
 
-export const DEFAULT_VOICE = 'Zephyr';
+export const DEFAULT_VOICE = 'Aoede';
 
-export const AVAILABLE_VOICES = ['Zephyr', 'Puck', 'Charon', 'Luna', 'Nova', 'Kore', 'Fenrir',	'Leda', 'Orus','Aoede','Callirrhoe','Autonoe','Enceladus','Iapetus','Umbriel','Algieba','Despina','Erinome','Algenib','Rasalgethi','Laomedeia','Achernar','Alnilam','Schedar','Gacrux','Pulcherrima','Achird',	'Zubenelgenubi','Vindemiatrix','Sadachbia','Sadaltager','Sulafat'];
+export const AVAILABLE_VOICES = ['Aoede', 'Puck', 'Charon', 'Fenrir', 'Kore'];
+
+export const VOICE_ALIASES: Record<string, string> = {
+  Aoede: 'Wonder Woman (Aoede)',
+  Puck: 'Spider-Man (Puck)',
+  Charon: 'Batman (Charon)',
+  Fenrir: 'Wolverine (Fenrir)',
+  Kore: 'Black Widow (Kore)',
+};

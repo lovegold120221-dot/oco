@@ -127,6 +127,7 @@
     .bg-calendar { background: #35bcf8; }
     .bg-drive { background: #2b95fa; }
     .bg-google { background: #ffffff; color: #4285F4 !important; font-size: 28px !important; }
+    .bg-security { background: linear-gradient(135deg, #ef4444, #991b1b); }
     .bg-signature { background: linear-gradient(135deg, #f94a6a, #c01335); }
     .bg-company { background: #3378fb; }
     .bg-tools { background: linear-gradient(135deg, #64748b, #334155); }

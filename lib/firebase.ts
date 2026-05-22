@@ -1,22 +1,42 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer, getDoc, setDoc } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
 import firebaseConfigFromFile from '../firebase-applet-config.json';
 
+const getEnv = (key: string): string | undefined => {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const val = import.meta.env[`VITE_${key}`] || import.meta.env[key];
+    if (val) return val;
+  }
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      const val = process.env[`VITE_${key}`] || process.env[key];
+      if (val) return val;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return undefined;
+};
+
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || firebaseConfigFromFile.apiKey,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || firebaseConfigFromFile.authDomain,
-  projectId: process.env.FIREBASE_PROJECT_ID || firebaseConfigFromFile.projectId,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || firebaseConfigFromFile.storageBucket,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFromFile.messagingSenderId,
-  appId: process.env.FIREBASE_APP_ID || firebaseConfigFromFile.appId,
-  measurementId: process.env.FIREBASE_MEASUREMENT_ID || firebaseConfigFromFile.measurementId,
+  apiKey: getEnv('FIREBASE_API_KEY') || firebaseConfigFromFile.apiKey,
+  authDomain: getEnv('FIREBASE_AUTH_DOMAIN') || firebaseConfigFromFile.authDomain,
+  projectId: getEnv('FIREBASE_PROJECT_ID') || firebaseConfigFromFile.projectId,
+  storageBucket: getEnv('FIREBASE_STORAGE_BUCKET') || firebaseConfigFromFile.storageBucket,
+  messagingSenderId: getEnv('FIREBASE_MESSAGING_SENDER_ID') || firebaseConfigFromFile.messagingSenderId,
+  appId: getEnv('FIREBASE_APP_ID') || firebaseConfigFromFile.appId,
+  measurementId: getEnv('FIREBASE_MEASUREMENT_ID') || firebaseConfigFromFile.measurementId,
+  firestoreDatabaseId: getEnv('FIREBASE_FIRESTORE_DATABASE_ID') || (firebaseConfigFromFile as any).firestoreDatabaseId,
+  databaseURL: getEnv('FIREBASE_DATABASE_URL') || getEnv('DATABASE_URL') || (firebaseConfigFromFile as any).databaseURL || 'https://gen-lang-client-0836251512-default-rtdb.firebaseio.com',
 };
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-const firestoreId = (firebaseConfig as any).firestoreDatabaseId || '';
+const firestoreId = firebaseConfig.firestoreDatabaseId || '';
 export const db = getFirestore(app, firestoreId === '' ? undefined : firestoreId); /* CRITICAL: The app will break without this line */
+export const rtdb = getDatabase(app);
 
 const provider = new GoogleAuthProvider();
 // Required Scopes for Google Workspace APIs
@@ -31,6 +51,8 @@ provider.addScope('https://www.googleapis.com/auth/forms.responses.readonly');
 provider.addScope('https://www.googleapis.com/auth/contacts');
 provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 provider.addScope('https://www.googleapis.com/auth/gmail.send');
+provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+provider.addScope('https://www.googleapis.com/auth/gmail.modify');
 provider.addScope('https://www.googleapis.com/auth/chat.messages');
 provider.addScope('https://www.googleapis.com/auth/chat.spaces');
 provider.addScope('https://www.googleapis.com/auth/meetings.space.created');

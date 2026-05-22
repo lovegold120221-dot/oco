@@ -4,7 +4,7 @@
 */
 import { FunctionCall, useSettings, useUI, useTools } from '@/lib/state';
 import c from 'classnames';
-import { DEFAULT_LIVE_API_MODEL, AVAILABLE_VOICES } from '@/lib/constants';
+import { DEFAULT_LIVE_API_MODEL, AVAILABLE_VOICES, VOICE_ALIASES } from '@/lib/constants';
 import { useLiveAPIContext } from '@/contexts/LiveAPIContext';
 import { useState } from 'react';
 import ToolEditorModal from './ToolEditorModal';
@@ -66,7 +66,7 @@ export default function Sidebar() {
                 <select value={voice} onChange={e => setVoice(e.target.value)}>
                   {AVAILABLE_VOICES.map(v => (
                     <option key={v} value={v}>
-                      {v}
+                      {VOICE_ALIASES[v] || v}
                     </option>
                   ))}
                 </select>

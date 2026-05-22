@@ -107,6 +107,13 @@ export function useLiveApi({
              lower.includes('billing');
     };
 
+    const isGoAwayError = (msg: string): boolean => {
+      const lower = msg.toLowerCase();
+      return lower.includes('goaway') || 
+             lower.includes('go away') || 
+             lower.includes('duration');
+    };
+
     const onClose = (e?: any) => {
       setConnected(false);
       console.log("Live API connection closed:", e);
@@ -125,6 +132,13 @@ export function useLiveApi({
         useLogStore.getState().addTurn({
           role: 'system',
           text: "⚠️ **Gemini Live API Quota Exceeded:** You have exceeded your current Google AI Studio free tier quota. Please switch your API key to a Pay-As-You-Go plan in Google AI Studio Settings if you require higher limits, or try again tomorrow.",
+          isFinal: true
+        });
+      } else if (isGoAwayError(reason) || isGoAwayError(errMsg)) {
+        errorShownThisSessionRef.current = true;
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: "🕒 **Session Timeout:** The standard Gemini Live session duration limit was reached. You can easily start a new session by clicking **Reconnect**.",
           isFinal: true
         });
       } else {
@@ -153,6 +167,13 @@ export function useLiveApi({
         useLogStore.getState().addTurn({
           role: 'system',
           text: "⚠️ **Gemini Live API Quota Exceeded:** You have exceeded your current Google AI Studio free tier quota. Please switch your API key to a Pay-As-You-Go plan in Google AI Studio Settings if you require higher limits, or try again tomorrow.",
+          isFinal: true
+        });
+      } else if (isGoAwayError(errMsg)) {
+        errorShownThisSessionRef.current = true;
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: "🕒 **Session Timeout:** The standard Gemini Live session duration limit was reached. You can easily start a new session by clicking **Reconnect**.",
           isFinal: true
         });
       } else if (errMsg) {
@@ -231,7 +252,27 @@ export function useLiveApi({
                    responsePayload = json || { data: dataText };
                    
                    const uiState = await import('../../lib/state');
-                   uiState.useUI.getState().setActiveWorkspaceResult(responsePayload);
+                   const isGmail = url.toLowerCase().includes('gmail') || url.toLowerCase().includes('/messages') || url.toLowerCase().includes('/threads') || url.toLowerCase().includes('/send');
+                   const isYouTube = url.toLowerCase().includes('youtube') || url.toLowerCase().includes('youtu.be');
+                   if (isGmail) {
+                       uiState.useUI.getState().setActiveWorkspaceResult({
+                           artifact: {
+                               title: "Gmail Live Inbox",
+                               type: "gmail",
+                               content: dataText
+                           }
+                       });
+                   } else if (isYouTube) {
+                       uiState.useUI.getState().setActiveWorkspaceResult({
+                           artifact: {
+                               title: "YouTube Media Stream",
+                               type: "youtube",
+                               content: dataText
+                           }
+                       });
+                   } else {
+                       uiState.useUI.getState().setActiveWorkspaceResult(responsePayload);
+                   }
                    
                } catch (e: any) {
                    responsePayload = { error: e.message };
@@ -562,6 +603,36 @@ export function useLiveApi({
                    responsePayload = { error: e.message };
                }
            }
+        }
+
+        if (fc.name === 'search_past_conversations') {
+            const { query: searchQuery } = fc.args as any;
+            const user = auth.currentUser;
+            if (!user) {
+                responsePayload = { error: 'No user authenticated.' };
+            } else {
+                try {
+                    const { collection, getDocs, query: fsQuery, orderBy, limit: fsLimit } = await import('firebase/firestore');
+                    const historyRef = collection(db, 'users', user.uid, 'history');
+                    const qFlags = fsQuery(historyRef, orderBy('timestamp', 'desc'), fsLimit(150));
+                    const snap = await getDocs(qFlags);
+                    const matchedTurns: any[] = [];
+                    snap.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const text = data.text || '';
+                        if (text.toLowerCase().includes(searchQuery.toLowerCase())) {
+                            matchedTurns.push({
+                                role: data.role,
+                                text: text,
+                                timestamp: data.timestamp
+                            });
+                        }
+                    });
+                    responsePayload = { results: matchedTurns };
+                } catch (e: any) {
+                    responsePayload = { error: e.message };
+                }
+            }
         }
 
         if (fc.name === 'save_note') {
