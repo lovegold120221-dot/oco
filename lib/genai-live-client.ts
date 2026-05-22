@@ -116,7 +116,16 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
         callbacks,
       });
     } catch (e: any) {
-      console.error('Error connecting to GenAI Live:', e);
+      const isKnownError = e?.message?.toLowerCase().includes('prepayment') || 
+                          e?.message?.toLowerCase().includes('depleted') || 
+                          e?.message?.toLowerCase().includes('quota') || 
+                          e?.message?.toLowerCase().includes('resource_exhausted');
+
+      if (!isKnownError) {
+        console.error('Error connecting to GenAI Live:', e);
+      } else {
+        console.warn('GenAI Live connection failed due to account/quota limits.');
+      }
       this._status = 'disconnected';
       this.session = undefined;
       const errorEvent = new ErrorEvent('error', {
@@ -283,10 +292,17 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
 
   protected onError(e: ErrorEvent) {
     this._status = 'disconnected';
+    
+    const errMsg = e.message || '';
+    const isKnownError = errMsg.toLowerCase().includes('prepayment') || 
+                        errMsg.toLowerCase().includes('depleted') || 
+                        errMsg.toLowerCase().includes('quota') || 
+                        errMsg.toLowerCase().includes('resource_exhausted');
+
     if (e.message && e.message.includes('error')) {
-       console.error('Live API Error:', e.message);
+       if (!isKnownError) console.error('Live API Error:', e.message);
     } else {
-       console.error('Live API Error Event:', e);
+       if (!isKnownError) console.error('Live API Error Event:', e);
     }
 
     const message = `Could not connect to GenAI Live: ${e.message || 'Unknown error'}`;

@@ -98,6 +98,13 @@ export function useLiveApi({
       return String(err);
     };
 
+    const isPrepaymentError = (msg: string): boolean => {
+      const lower = msg.toLowerCase();
+      return lower.includes('prepayment') || 
+             lower.includes('depleted') || 
+             lower.includes('credit');
+    };
+
     const isQuotaError = (msg: string): boolean => {
       const lower = msg.toLowerCase();
       return lower.includes('quota') || 
@@ -116,7 +123,23 @@ export function useLiveApi({
 
     const onClose = (e?: any) => {
       setConnected(false);
-      console.log("Live API connection closed:", e);
+      
+      const reason = e?.reason || '';
+      const errMsg = getErrorMessage(e);
+      const fullMsg = (reason + ' ' + errMsg).toLowerCase();
+      const isKnownHandling = fullMsg.includes('prepayment') || 
+                             fullMsg.includes('depleted') || 
+                             fullMsg.includes('quota') || 
+                             fullMsg.includes('resource_exhausted') || 
+                             fullMsg.includes('goaway') ||
+                             fullMsg.includes('go away');
+
+      if (!isKnownHandling) {
+        console.log("Live API connection closed:", e);
+      } else {
+        console.log("Live API connection closed due to expected limit/state.");
+      }
+
       if (voluntaryDisconnectRef.current) {
         return;
       }
@@ -124,10 +147,14 @@ export function useLiveApi({
         return;
       }
 
-      const reason = e?.reason || '';
-      const errMsg = getErrorMessage(e);
-
-      if (isQuotaError(reason) || isQuotaError(errMsg)) {
+      if (isPrepaymentError(reason) || isPrepaymentError(errMsg)) {
+        errorShownThisSessionRef.current = true;
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: "⚠️ **Prepayment Credits Depleted:** Your Google AI Studio prepayment credits are fully depleted. Please go to the **[Google AI Studio Console](https://aistudio.google.com/)** or manage your billing settings at [AI Studio Projects](https://ai.studio/projects) to add funds or purchase additional credits to reactivate the real-time Live API voice service.",
+          isFinal: true
+        });
+      } else if (isQuotaError(reason) || isQuotaError(errMsg)) {
         errorShownThisSessionRef.current = true;
         useLogStore.getState().addTurn({
           role: 'system',
@@ -152,7 +179,20 @@ export function useLiveApi({
     };
 
     const onError = (e?: any) => {
-      console.error("Live API connection error:", e);
+      const errMsg = getErrorMessage(e);
+      const isKnownError = errMsg.toLowerCase().includes('prepayment') || 
+                          errMsg.toLowerCase().includes('depleted') || 
+                          errMsg.toLowerCase().includes('quota') || 
+                          errMsg.toLowerCase().includes('resource_exhausted') ||
+                          errMsg.toLowerCase().includes('goaway') ||
+                          errMsg.toLowerCase().includes('go away');
+
+      if (!isKnownError) {
+        console.error("Live API connection error:", e);
+      } else {
+        console.warn("Live API connection error suppressed (Billing/Quota handled in UI)");
+      }
+
       if (voluntaryDisconnectRef.current) {
         return;
       }
@@ -160,9 +200,14 @@ export function useLiveApi({
         return;
       }
 
-      const errMsg = getErrorMessage(e);
-
-      if (isQuotaError(errMsg)) {
+      if (isPrepaymentError(errMsg)) {
+        errorShownThisSessionRef.current = true;
+        useLogStore.getState().addTurn({
+          role: 'system',
+          text: "⚠️ **Prepayment Credits Depleted:** Your Google AI Studio prepayment credits are fully depleted. Please go to the **[Google AI Studio Console](https://aistudio.google.com/)** or manage your billing settings at [AI Studio Projects](https://ai.studio/projects) to add funds or purchase additional credits to reactivate the real-time Live API voice service.",
+          isFinal: true
+        });
+      } else if (isQuotaError(errMsg)) {
         errorShownThisSessionRef.current = true;
         useLogStore.getState().addTurn({
           role: 'system',
